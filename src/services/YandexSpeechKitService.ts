@@ -271,7 +271,7 @@ class YandexSpeechKitService {
     };
 
     const params = new URLSearchParams(recognitionConfig as any);
-    const url = `https://stt.api.cloud.yandex.net/speech/v1/stt:recognize?${params.toString()}`;
+    const url = `https://stt.api.cloud.yandex.net/speech/v3/stt:recognize?${params.toString()}`;
 
     console.log('Sending enhanced request to Yandex SpeechKit v3:', {
       url,
