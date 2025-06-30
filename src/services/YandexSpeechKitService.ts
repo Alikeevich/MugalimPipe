@@ -92,7 +92,7 @@ class YandexSpeechKitService {
 
   constructor(config: YandexSpeechKitConfig) {
     this.config = {
-      apiUrl: 'https://stt.api.cloud.yandex.net/speech/v1/stt:longRunningRecognize',
+      apiUrl: 'https://stt.api.cloud.yandex.net/speech/v3/stt:longRunningRecognize',
       languages: ['ru-RU', 'kk-KZ', 'en-US'], // Default multilingual support
       autoDetectLanguage: true,
       format: 'lpcm',
