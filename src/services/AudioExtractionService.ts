@@ -1,36 +1,35 @@
-import { createFFmpeg, fetchFile } from '@ffmpeg/ffmpeg';
+import { FFmpeg } from '@ffmpeg/ffmpeg';
+import { fetchFile } from '@ffmpeg/util'; // <--- Импорт из нового пакета
 
 export class AudioExtractionService {
-  private static ffmpeg = createFFmpeg({
-    log: false,
-    corePath: 'https://unpkg.com/@ffmpeg/core@0.12.4/dist/ffmpeg-core.js'
-  });
+  // Создаем экземпляр класса, а не вызываем функцию
+  private static ffmpeg = new FFmpeg(); // <--- Создание экземпляра класса
 
-  /**
-   * Now using only ffmpeg.wasm (no fake fallback)
-   */
   static async extractAudioFromVideo(videoFile: File): Promise<AudioBuffer> {
     console.log('🎬 Extracting audio with ffmpeg.wasm...');
 
-    if (!this.ffmpeg.isLoaded()) {
-      await this.ffmpeg.load();
+    // Загрузка теперь - это метод экземпляра, а не статический
+    if (!this.ffmpeg.loaded) { // <--- Свойство `loaded` вместо `isLoaded()`
+      await this.ffmpeg.load({
+        coreURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.js' // <--- Явное указание URL
+      });
     }
 
-    // Write file into virtual FS.
-    this.ffmpeg.FS('writeFile', 'inputVideo', await fetchFile(videoFile));
+    // Запись файла в виртуальную ФС
+    await this.ffmpeg.writeFile('inputVideo', await fetchFile(videoFile)); // <--- Метод `writeFile` вместо `FS`
 
-    // Convert to 16kHz mono wav
-    await this.ffmpeg.run(
+    // Конвертация в wav
+    await this.ffmpeg.exec([ // <--- Метод `exec` вместо `run`
       '-i', 'inputVideo',
       '-vn',
       '-acodec', 'pcm_s16le',
       '-ar', '16000',
       '-ac', '1',
       'audio.wav'
-    );
+    ]);
 
-    const data = this.ffmpeg.FS('readFile', 'audio.wav');
-    const blob = new Blob([data.buffer], { type: 'audio/wav' });
+    const data = await this.ffmpeg.readFile('audio.wav'); // <--- Метод `readFile` вместо `FS`
+    const blob = new Blob([data], { type: 'audio/wav' });
 
     // Decode to AudioBuffer to keep old API shape
     const audioContext = new AudioContext({ sampleRate: 16000 });
