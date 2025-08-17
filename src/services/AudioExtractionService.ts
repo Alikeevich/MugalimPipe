@@ -1,228 +1,50 @@
+import { createFFmpeg, fetchFile } from '@ffmpeg/ffmpeg';
+
 export class AudioExtractionService {
+  private static ffmpeg = createFFmpeg({
+    log: false,
+    corePath: 'https://unpkg.com/@ffmpeg/core@0.12.4/dist/ffmpeg-core.js'
+  });
+
   /**
-   * Enhanced audio extraction with robust fallback system
+   * Now using only ffmpeg.wasm (no fake fallback)
    */
   static async extractAudioFromVideo(videoFile: File): Promise<AudioBuffer> {
-    console.log('🎵 Starting robust audio extraction...');
-    
-    try {
-      // Method 1: Try enhanced Web Audio API approach
-      return await this.extractUsingEnhancedWebAudio(videoFile);
-    } catch (error) {
-      console.warn('⚠️ Enhanced Web Audio method failed:', error);
-      
-      try {
-        // Method 2: Try simplified audio processing
-        return await this.extractUsingSimplifiedMethod(videoFile);
-      } catch (error2) {
-        console.warn('⚠️ Simplified method failed:', error2);
-        
-        // Method 3: Generate realistic audio simulation
-        console.log('🎭 Using realistic audio simulation...');
-        return this.generateRealisticAudioBuffer(videoFile);
-      }
+    console.log('🎬 Extracting audio with ffmpeg.wasm...');
+
+    if (!this.ffmpeg.isLoaded()) {
+      await this.ffmpeg.load();
     }
-  }
 
-  /**
-   * Enhanced Web Audio API method without deprecated components
-   */
-  private static async extractUsingEnhancedWebAudio(videoFile: File): Promise<AudioBuffer> {
-    return new Promise((resolve, reject) => {
-      const video = document.createElement('video');
-      video.crossOrigin = 'anonymous';
-      video.muted = false; // Allow audio for extraction
-      video.preload = 'metadata';
-      video.volume = 0; // Silent playback
-      
-      video.onloadedmetadata = async () => {
-        try {
-          const duration = Math.min(video.duration || 10, 600); // Max 10 minutes
-          const sampleRate = 16000; // Standard for speech recognition
-          
-          // Create audio context with proper sample rate
-          const audioContext = new AudioContext({ 
-            sampleRate,
-            latencyHint: 'playback'
-          });
-          
-          // Create offline context for processing
-          const offlineContext = new OfflineAudioContext(
-            1, // mono
-            sampleRate * duration,
-            sampleRate
-          );
-          
-          // Create buffer for audio data
-          const audioBuffer = offlineContext.createBuffer(1, sampleRate * duration, sampleRate);
-          const channelData = audioBuffer.getChannelData(0);
-          
-          // Generate realistic audio based on video characteristics
-          const fileSize = videoFile.size;
-          const complexity = Math.min(fileSize / (1024 * 1024), 100); // MB to complexity factor
-          
-          for (let i = 0; i < channelData.length; i++) {
-            const time = i / sampleRate;
-            
-            // Create speech-like patterns
-            const speechFreq = 200 + Math.sin(time * 0.3) * 50; // Varying pitch
-            const speechPattern = Math.sin(time * speechFreq * 2 * Math.PI);
-            
-            // Add pauses and variations
-            const pausePattern = Math.sin(time * 0.1) > 0.3 ? 1 : 0.1;
-            const amplitude = (0.1 + Math.random() * 0.2) * pausePattern * (complexity / 100);
-            
-            channelData[i] = speechPattern * amplitude;
-          }
-          
-          // Clean up
-          audioContext.close();
-          video.src = '';
-          
-          console.log('✅ Audio extracted using enhanced Web Audio API');
-          resolve(audioBuffer);
-          
-        } catch (error) {
-          reject(error);
-        }
-      };
-      
-      video.onerror = () => reject(new Error('Failed to load video for audio extraction'));
-      video.src = URL.createObjectURL(videoFile);
-    });
-  }
+    // Write file into virtual FS.
+    this.ffmpeg.FS('writeFile', 'inputVideo', await fetchFile(videoFile));
 
-  /**
-   * Simplified audio extraction method
-   */
-  private static async extractUsingSimplifiedMethod(videoFile: File): Promise<AudioBuffer> {
-    console.log('🔄 Using simplified audio extraction...');
-    
-    // Create audio context
-    const audioContext = new AudioContext({ sampleRate: 16000 });
-    
-    // Estimate duration from file size
-    const estimatedDuration = Math.min(Math.max(videoFile.size / (1024 * 1024 * 2), 5), 600);
-    
-    // Create audio buffer
-    const audioBuffer = audioContext.createBuffer(
-      1, // mono
-      audioContext.sampleRate * estimatedDuration,
-      audioContext.sampleRate
+    // Convert to 16kHz mono wav
+    await this.ffmpeg.run(
+      '-i', 'inputVideo',
+      '-vn',
+      '-acodec', 'pcm_s16le',
+      '-ar', '16000',
+      '-ac', '1',
+      'audio.wav'
     );
-    
-    const channelData = audioBuffer.getChannelData(0);
-    
-    // Generate realistic speech simulation
-    for (let i = 0; i < channelData.length; i++) {
-      const time = i / audioContext.sampleRate;
-      
-      // Create realistic speech patterns
-      const baseFreq = 150 + Math.sin(time * 0.2) * 30;
-      const harmonics = Math.sin(time * baseFreq * 2 * Math.PI) * 0.6 +
-                       Math.sin(time * baseFreq * 4 * Math.PI) * 0.3 +
-                       Math.sin(time * baseFreq * 6 * Math.PI) * 0.1;
-      
-      // Add speech-like envelope
-      const envelope = Math.sin(time * 2) > 0.2 ? 1 : 0.1;
-      const amplitude = (0.05 + Math.random() * 0.15) * envelope;
-      
-      channelData[i] = harmonics * amplitude;
-    }
-    
-    audioContext.close();
-    
-    console.log(`✅ Simplified audio extraction completed (${estimatedDuration.toFixed(1)}s)`);
+
+    const data = this.ffmpeg.FS('readFile', 'audio.wav');
+    const blob = new Blob([data.buffer], { type: 'audio/wav' });
+
+    // Decode to AudioBuffer to keep old API shape
+    const audioContext = new AudioContext({ sampleRate: 16000 });
+    const arrayBuffer = await blob.arrayBuffer();
+    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+    console.log('✅ Real audio extracted');
     return audioBuffer;
   }
-
-  /**
-   * Generate realistic audio buffer based on video file properties
-   */
-  private static generateRealisticAudioBuffer(videoFile: File): AudioBuffer {
-    console.log('🎭 Generating realistic audio simulation...');
-    
-    const sampleRate = 16000;
-    
-    // Estimate duration and characteristics from file
-    const fileSize = videoFile.size;
-    const fileName = videoFile.name.toLowerCase();
-    
-    // Estimate duration (rough calculation)
-    let estimatedDuration = Math.min(Math.max(fileSize / (1024 * 1024 * 2), 10), 600);
-    
-    // Adjust based on file type
-    if (fileName.includes('mp4') || fileName.includes('mov')) {
-      estimatedDuration *= 1.2; // These formats are typically longer
-    }
-    
-    const audioContext = new AudioContext({ sampleRate });
-    const audioBuffer = audioContext.createBuffer(1, sampleRate * estimatedDuration, sampleRate);
-    const channelData = audioBuffer.getChannelData(0);
-    
-    // Generate sophisticated speech simulation
-    for (let i = 0; i < channelData.length; i++) {
-      const time = i / sampleRate;
-      
-      // Create realistic speech patterns with multiple components
-      const fundamentalFreq = 180 + Math.sin(time * 0.15) * 40; // Varying pitch
-      const formant1 = Math.sin(time * fundamentalFreq * 2 * Math.PI) * 0.5;
-      const formant2 = Math.sin(time * fundamentalFreq * 3 * Math.PI) * 0.3;
-      const formant3 = Math.sin(time * fundamentalFreq * 5 * Math.PI) * 0.2;
-      
-      // Speech envelope with pauses
-      const speechCycle = Math.sin(time * 0.3) > -0.3 ? 1 : 0.05; // Speech vs pause
-      const microVariation = 0.8 + Math.random() * 0.4; // Natural variation
-      
-      // Combine components
-      const speechSignal = (formant1 + formant2 + formant3) * speechCycle * microVariation;
-      
-      // Add realistic amplitude
-      const amplitude = 0.08 + Math.random() * 0.04;
-      channelData[i] = speechSignal * amplitude;
-    }
-    
-    audioContext.close();
-    
-    console.log(`✅ Realistic audio simulation generated (${estimatedDuration.toFixed(1)}s, ${fileSize} bytes)`);
-    return audioBuffer;
-  }
-
-  /**
-   * Enhanced FFmpeg-style extraction with better error handling
-   */
   static async extractAudioUsingFFmpeg(videoFile: File): Promise<Blob> {
-    console.log('🎬 Starting enhanced audio blob extraction...');
-    
-    try {
-      // Method 1: Try direct audio buffer conversion
-      const audioBuffer = await this.extractAudioFromVideo(videoFile);
-      const wavBlob = this.audioBufferToWav(audioBuffer);
-      
-      console.log('✅ Audio blob created from buffer');
-      return wavBlob;
-      
-    } catch (error) {
-      console.warn('⚠️ Buffer conversion failed:', error);
-      
-      // Method 2: Generate realistic audio blob directly
-      return this.generateRealisticAudioBlob(videoFile);
-    }
-  }
-
-  /**
-   * Generate realistic audio blob for fallback
-   */
-  private static generateRealisticAudioBlob(videoFile: File): Blob {
-    console.log('🎭 Generating realistic audio blob...');
-    
-    const audioBuffer = this.generateRealisticAudioBuffer(videoFile);
+    const audioBuffer = await this.extractAudioFromVideo(videoFile);
     return this.audioBufferToWav(audioBuffer);
   }
 
-  /**
-   * Enhanced audio buffer to WAV conversion with better quality
-   */
   static audioBufferToWav(buffer: AudioBuffer): Blob {
     const length = buffer.length;
     const numberOfChannels = buffer.numberOfChannels;
