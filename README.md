@@ -26,13 +26,6 @@ This application now uses **Netlify Functions** to securely handle all API keys 
 
 ### 🔧 Deployment Setup
 
-1. **Set Environment Variables in Netlify Dashboard:**
-   ```
-   YANDEX_API_KEY=your-yandex-api-key
-   YANDEX_FOLDER_ID=your-yandex-folder-id
-   GEMINI_API_KEY=your-gemini-api-key
-   ```
-
 2. **Deploy to Netlify:**
    ```bash
    npm run build
@@ -50,7 +43,6 @@ This application now uses **Netlify Functions** to securely handle all API keys 
 - **📊 Comprehensive Scoring** - 1000-point evaluation system
 - **🔍 Filler Words Detection** - Identifies speech hesitations
 - **🎥 Video Analysis** - MediaPipe pose, gesture, facial analysis
-- **🛡️ Secure Architecture** - No API keys exposed to frontend
 
 ### 🌍 Supported Languages
 
