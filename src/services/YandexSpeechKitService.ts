@@ -1,18 +1,13 @@
-import axios from 'axios';
+// ВАЖНО: Все API ключи теперь перенесены в Netlify Functions для безопасности!
+// Этот сервис теперь работает через безопасные serverless функции
 
 export interface YandexSpeechKitConfig {
-  apiKey: string;
-  folderId: string;
-  apiUrl?: string;
+  // API ключи удалены из фронтенда для безопасности
   languages?: string[];
   autoDetectLanguage?: boolean;
   format?: 'lpcm' | 'oggopus' | 'mp3';
   sampleRateHertz?: number;
-  profanityFilter?: boolean;
-  literatureText?: boolean;
   includeFillerWords?: boolean;
-  rawResults?: boolean;
-  partialResults?: boolean;
 }
 
 export interface YandexSpeechKitV3Response {
@@ -89,21 +84,20 @@ export interface LanguageDetectionResult {
 
 class YandexSpeechKitService {
   private config: YandexSpeechKitConfig;
+  private netlifyFunctionUrl: string;
 
   constructor(config: YandexSpeechKitConfig) {
     this.config = {
-      apiUrl: 'https://stt.api.cloud.yandex.net/speech/v3/stt:longRunningRecognize',
       languages: ['ru-RU', 'kk-KZ', 'en-US'], // Default multilingual support
       autoDetectLanguage: true,
       format: 'lpcm',
       sampleRateHertz: 16000,
-      profanityFilter: false, // Отключаем фильтр для сохранения всех слов
-      literatureText: false, // Отключаем литературную обработку
       includeFillerWords: true, // Включаем слова-запинки
-      rawResults: true, // Включаем сырые результаты
-      partialResults: true, // Включаем частичные результаты
       ...config
     };
+    
+    // URL Netlify Function для безопасной работы с Yandex API
+    this.netlifyFunctionUrl = '/.netlify/functions/yandex-transcribe';
   }
 
   /**
@@ -215,94 +209,61 @@ class YandexSpeechKitService {
   }
 
   /**
-   * Transcribes audio using Yandex SpeechKit v3 with enhanced filler words support
+   * Transcribes audio using secure Netlify Function (API keys protected on server)
    */
   async transcribeAudio(audioBlob: Blob): Promise<TranscriptionResult> {
     try {
-      console.log(`Starting Yandex SpeechKit v3 transcription with filler words support...`);
+      console.log(`Starting secure Yandex SpeechKit transcription via Netlify Function...`);
       
-      // For shorter audio (< 1 minute), use synchronous API
-      if (await this.getAudioDuration(audioBlob) < 60) {
-        return await this.transcribeShortAudio(audioBlob);
-      } else {
-        return await this.transcribeLongAudio(audioBlob);
+      // Конвертируем аудио в base64 для передачи в функцию
+      const audioBase64 = await this.blobToBase64(audioBlob);
+      
+      // Отправляем запрос в безопасную Netlify Function
+      const response = await fetch(this.netlifyFunctionUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'transcribe',
+          audioData: audioBase64,
+          config: this.config
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
+      
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Transcription failed');
+      }
+      
+      return result.result;
 
     } catch (error) {
-      console.error('Yandex SpeechKit v3 transcription failed:', error);
+      console.error('Secure Yandex SpeechKit transcription failed:', error);
       throw this.handleApiError(error);
     }
   }
 
   /**
-   * Transcribes short audio using synchronous API with enhanced configuration
+   * Converts Blob to base64 for secure transmission to Netlify Function
    */
-  private async transcribeShortAudio(audioBlob: Blob): Promise<TranscriptionResult> {
-    const audioBuffer = await audioBlob.arrayBuffer();
-    
-    const headers = {
-      'Authorization': `Api-Key ${this.config.apiKey}`,
-      'x-folder-id': this.config.folderId,
-      'Content-Type': 'application/octet-stream'
-    };
-
-    // Enhanced recognition config for filler words
-    const recognitionConfig = {
-      format: this.config.format,
-      sampleRateHertz: this.config.sampleRateHertz,
-      profanityFilter: this.config.profanityFilter, // false для сохранения всех слов
-      literature_text: this.config.literatureText, // false для сырого текста
-      raw_results: this.config.rawResults, // true для получения всех результатов
-      partial_results: this.config.partialResults, // true для частичных результатов
-      audio_encoding: this.config.format?.toUpperCase(),
-      
-      // Специальные настройки для слов-запинок
-      enable_automatic_punctuation: false, // Отключаем автопунктуацию
-      enable_speaker_labeling: false, // Отключаем разметку спикеров для простоты
-      enable_word_time_offsets: true, // Включаем временные метки для слов
-      
-      // Multilingual configuration
-      ...(this.config.autoDetectLanguage ? {
-        languageRestriction: this.config.languages,
-        autoDetectLanguage: true
-      } : {
-        lang: this.config.languages?.[0] || 'ru-RU'
-      })
-    };
-
-    const params = new URLSearchParams(recognitionConfig as any);
-    const url = `https://stt.api.cloud.yandex.net/speech/v3/stt:recognize?${params.toString()}`;
-
-    console.log('Sending enhanced request to Yandex SpeechKit v3:', {
-      url,
-      audioSize: audioBuffer.byteLength,
-      config: recognitionConfig,
-      fillerWordsEnabled: this.config.includeFillerWords
+  private async blobToBase64(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        // Убираем префикс data:audio/...;base64,
+        const base64 = result.split(',')[1];
+        resolve(base64);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
     });
-
-    const response = await axios.post<YandexSpeechKitV3Response>(
-      url,
-      audioBuffer,
-      {
-        headers,
-        timeout: 60000,
-        maxContentLength: 50 * 1024 * 1024,
-        maxBodyLength: 50 * 1024 * 1024
-      }
-    );
-
-    return this.processV3ResponseWithFillerWords(response.data);
-  }
-
-  /**
-   * Transcribes long audio using asynchronous API with multilingual support
-   */
-  private async transcribeLongAudio(audioBlob: Blob): Promise<TranscriptionResult> {
-    console.log('Using long-running recognition for audio > 1 minute...');
-    
-    // Step 1: Upload audio to Yandex Object Storage (simplified - in real app you'd need storage)
-    // For now, we'll chunk the audio and process in segments
-    return await this.transcribeAudioChunked(audioBlob);
   }
 
   /**
@@ -310,11 +271,11 @@ class YandexSpeechKitService {
    */
   async transcribeAudioChunked(audioBlob: Blob, onProgress?: (progress: number) => void): Promise<TranscriptionResult> {
     try {
-      console.log('Starting intelligent chunked transcription with filler words...');
+      console.log('Starting secure chunked transcription via Netlify Function...');
       
       // Check if audio is small enough for direct processing
       if (audioBlob.size <= 1024 * 1024) { // 1MB
-        return await this.transcribeShortAudio(audioBlob);
+        return await this.transcribeAudio(audioBlob);
       }
 
       // Split audio into overlapping chunks for better language detection
@@ -351,7 +312,7 @@ class YandexSpeechKitService {
         try {
           console.log(`Processing chunk ${i + 1}/${chunks.length} with enhanced filler detection...`);
           
-          const chunkResult = await this.transcribeShortAudio(chunks[i]);
+          const chunkResult = await this.transcribeAudio(chunks[i]);
           
           if (chunkResult.text.trim()) {
             const chunkOffset = i * 30; // 30-second chunks
@@ -816,112 +777,37 @@ class YandexSpeechKitService {
   }
 
   /**
-   * Validates the configuration for v3 API
-   */
-  validateConfig(): { isValid: boolean; errors: string[] } {
-    const errors: string[] = [];
-
-    if (!this.config.apiKey) {
-      errors.push('API ключ обязателен / API кілті міндетті');
-    }
-
-    if (!this.config.folderId) {
-      errors.push('Folder ID обязателен / Folder ID міндетті');
-    }
-
-    if (this.config.apiKey && this.config.apiKey.length < 20) {
-      errors.push('API ключ кажется неверным (слишком короткий) / API кілті дұрыс емес сияқты');
-    }
-
-    if (this.config.folderId && !this.config.folderId.match(/^[a-z0-9]{20}$/)) {
-      errors.push('Folder ID должен содержать 20 символов / Folder ID 20 таңбадан тұруы керек');
-    }
-
-    if (this.config.languages && this.config.languages.length === 0) {
-      errors.push('Необходимо указать хотя бы один язык / Кемінде бір тіл көрсету керек');
-    }
-
-    return {
-      isValid: errors.length === 0,
-      errors
-    };
-  }
-
-  /**
-   * Tests the connection to Yandex SpeechKit v3 with enhanced filler words support
+   * Tests the connection to Yandex SpeechKit via secure Netlify Function
    */
   async testConnection(): Promise<{ success: boolean; message: string; detectedFeatures?: string[] }> {
     try {
-      const validation = this.validateConfig();
-      if (!validation.isValid) {
-        return {
-          success: false,
-          message: `Ошибки конфигурации: ${validation.errors.join(', ')}`
-        };
+      console.log('Testing secure Yandex SpeechKit connection via Netlify Function...');
+      
+      // Отправляем тестовый запрос в безопасную Netlify Function
+      const response = await fetch(this.netlifyFunctionUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'test-connection'
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-
-      // Create a test audio with filler words (1 second of silence)
-      const testBlob = this.createTestAudio();
-
-      console.log('Testing v3 API with enhanced filler words configuration...');
-      const result = await this.transcribeShortAudio(testBlob);
       
-      const features = [];
-      if (this.config.autoDetectLanguage) features.push('Автоопределение языка');
-      if (this.config.languages && this.config.languages.length > 1) features.push('Многоязычность');
-      if (this.config.includeFillerWords) features.push('Слова-запинки');
-      if (this.config.rawResults) features.push('Сырые результаты');
-      features.push('v3 API');
-      
-      return {
-        success: true,
-        message: 'Успешно подключено к Yandex SpeechKit v3 с поддержкой слов-запинок! / Yandex SpeechKit v3-ке сәтті қосылды!',
-        detectedFeatures: features
-      };
+      const result = await response.json();
+      return result;
       
     } catch (error) {
       console.error('Connection test failed:', error);
       return {
         success: false,
-        message: `Тест подключения не удался: ${error} / Қосылым тесті сәтсіз аяқталды`
+        message: `Secure connection test failed: ${error instanceof Error ? error.message : 'Unknown error'}`
       };
     }
-  }
-
-  /**
-   * Creates a test audio blob for connection testing
-   */
-  private createTestAudio(): Blob {
-    const sampleRate = 16000;
-    const duration = 1; // 1 second
-    const samples = sampleRate * duration;
-    
-    // Create WAV header + silence
-    const buffer = new ArrayBuffer(44 + samples * 2);
-    const view = new DataView(buffer);
-    
-    // WAV header
-    const writeString = (offset: number, string: string) => {
-      for (let i = 0; i < string.length; i++) {
-        view.setUint8(offset + i, string.charCodeAt(i));
-      }
-    };
-    
-    writeString(0, 'RIFF');
-    view.setUint32(4, 36 + samples * 2, true);
-    writeString(8, 'WAVE');
-    writeString(12, 'fmt ');
-    view.setUint32(16, 16, true);
-    view.setUint16(20, 1, true); // PCM
-    view.setUint16(22, 1, true); // mono
-    view.setUint32(24, sampleRate, true);
-    view.setUint32(28, sampleRate * 2, true);
-    view.setUint16(32, 2, true);
-    view.setUint16(34, 16, true);
-    writeString(36, 'data');
-    view.setUint32(40, samples * 2, true);
-    
-    return new Blob([buffer], { type: 'audio/wav' });
   }
 
   /**
@@ -929,20 +815,18 @@ class YandexSpeechKitService {
    */
   updateConfig(newConfig: Partial<YandexSpeechKitConfig>): void {
     this.config = { ...this.config, ...newConfig };
-    console.log('Yandex SpeechKit v3 configuration updated:', {
+    console.log('Secure Yandex SpeechKit configuration updated:', {
       languages: this.config.languages,
       autoDetect: this.config.autoDetectLanguage,
-      fillerWords: this.config.includeFillerWords,
-      rawResults: this.config.rawResults
+      fillerWords: this.config.includeFillerWords
     });
   }
 
   /**
-   * Gets current configuration (without sensitive data)
+   * Gets current configuration (API keys now safely stored on server)
    */
-  getConfig(): Omit<YandexSpeechKitConfig, 'apiKey'> {
-    const { apiKey, ...safeConfig } = this.config;
-    return safeConfig;
+  getConfig(): YandexSpeechKitConfig {
+    return { ...this.config };
   }
 
   /**
@@ -950,7 +834,6 @@ class YandexSpeechKitService {
    */
   getStatus(): {
     configured: boolean;
-    folderId: string;
     languages: string[];
     autoDetectLanguage: boolean;
     includeFillerWords: boolean;
@@ -959,8 +842,7 @@ class YandexSpeechKitService {
     version: string;
   } {
     return {
-      configured: !!(this.config.apiKey && this.config.folderId),
-      folderId: this.config.folderId,
+      configured: true, // Всегда true, так как ключи на сервере
       languages: this.config.languages || [],
       autoDetectLanguage: this.config.autoDetectLanguage || false,
       includeFillerWords: this.config.includeFillerWords || false,

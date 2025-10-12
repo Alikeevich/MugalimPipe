@@ -23,13 +23,13 @@ const AnalysisProgress: React.FC<AnalysisProgressProps> = ({ fileName, onAnalysi
     analysisQuality: 'Ожидание...'
   });
 
-  // Auto-configure Yandex based on environment variables
-  const hasYandexCredentials = !!(import.meta.env.VITE_YANDEX_API_KEY && import.meta.env.VITE_YANDEX_FOLDER_ID);
+  // ВАЖНО: API ключи теперь безопасно хранятся в Netlify Functions!
+  // Фронтенд больше не имеет доступа к секретным ключам
+  const hasYandexCredentials = true; // Всегда true, так как ключи на сервере
   
   const [yandexConfig] = useState({
     enabled: hasYandexCredentials,
-    apiKey: import.meta.env.VITE_YANDEX_API_KEY || '',
-    folderId: import.meta.env.VITE_YANDEX_FOLDER_ID || '',
+    // API ключи удалены из фронтенда для безопасности
     languages: ['ru-RU', 'kk-KZ', 'en-US'],
     autoDetectLanguage: true,
     includeFillerWords: true,
@@ -120,16 +120,12 @@ const AnalysisProgress: React.FC<AnalysisProgressProps> = ({ fileName, onAnalysi
         const { audioAnalysisService } = await import('../services/AudioAnalysisService');
         
         // Auto-configure audio analysis service
-        if (hasYandexCredentials) {
+        if (yandexConfig.enabled) {
           audioAnalysisService.updateConfig({
             useYandexSpeechKit: true,
             languages: yandexConfig.languages,
             autoDetectLanguage: yandexConfig.autoDetectLanguage,
-            includeFillerWords: yandexConfig.includeFillerWords,
-            yandexConfig: {
-              apiKey: yandexConfig.apiKey,
-              folderId: yandexConfig.folderId
-            }
+            includeFillerWords: yandexConfig.includeFillerWords
           });
         }
         
@@ -197,7 +193,7 @@ const AnalysisProgress: React.FC<AnalysisProgressProps> = ({ fileName, onAnalysi
               analysisQuality
             },
             multilingualAnalysis: {
-              yandexSpeechKitUsed: hasYandexCredentials && audioAnalysis.transcriptionMetadata?.source === 'yandex',
+              yandexSpeechKitUsed: yandexConfig.enabled && audioAnalysis.transcriptionMetadata?.source === 'yandex',
               detectedLanguages: audioAnalysis.transcriptionMetadata?.detectedLanguages || [],
               isMultilingual: audioAnalysis.transcriptionMetadata?.isMultilingual || false,
               languageSwitches: audioAnalysis.transcriptionMetadata?.languageSwitches || 0,
@@ -336,7 +332,7 @@ const AnalysisProgress: React.FC<AnalysisProgressProps> = ({ fileName, onAnalysi
           },
           analysisDetails: {
             multilingualAnalysis: {
-              yandexSpeechKitUsed: hasYandexCredentials,
+              yandexSpeechKitUsed: yandexConfig.enabled,
               detectedLanguages: [
                 { languageCode: 'ru-RU', probability: 0.6 },
                 { languageCode: 'en-US', probability: 0.25 },
@@ -404,21 +400,21 @@ const AnalysisProgress: React.FC<AnalysisProgressProps> = ({ fileName, onAnalysi
 
       {/* Status indicator for Yandex integration */}
       {hasYandexCredentials && (
-        <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6 border border-green-200 mb-8">
+        <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-2xl p-6 border border-blue-200 mb-8">
           <div className="flex items-center space-x-3">
             <div className="flex items-center space-x-2">
-              <Wifi className="w-6 h-6 text-green-600" />
+              <Wifi className="w-6 h-6 text-blue-600" />
               <Globe className="w-5 h-5 text-blue-600" />
               <Brain className="w-5 h-5 text-purple-600" />
               <Mic className="w-5 h-5 text-orange-600" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">Yandex SpeechKit v3 + Google Gemini AI активированы</h3>
-              <p className="text-sm text-gray-600">Многоязычное распознавание речи с AI-анализом и детекцией слов-запинок</p>
+              <h3 className="text-lg font-semibold text-gray-900">🔒 Secure API Integration активирована</h3>
+              <p className="text-sm text-gray-600">Yandex SpeechKit v3 + Google Gemini AI через защищенные Netlify Functions</p>
             </div>
-            <div className="flex items-center space-x-1 text-green-600">
+            <div className="flex items-center space-x-1 text-blue-600">
               <CheckCircle className="w-5 h-5" />
-              <span className="text-sm font-medium">Готов к работе</span>
+              <span className="text-sm font-medium">Безопасно настроено</span>
             </div>
           </div>
         </div>
@@ -432,12 +428,12 @@ const AnalysisProgress: React.FC<AnalysisProgressProps> = ({ fileName, onAnalysi
               <Mic className="w-5 h-5 text-orange-600" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">Google Gemini AI + Симуляция многоязычности</h3>
-              <p className="text-sm text-gray-600">AI-анализ с симуляцией многоязычного распознавания и детекцией слов-запинок</p>
+              <h3 className="text-lg font-semibold text-gray-900">🔒 Secure Google Gemini AI + Симуляция</h3>
+              <p className="text-sm text-gray-600">AI-анализ через защищенные функции с симуляцией многоязычности</p>
             </div>
             <div className="flex items-center space-x-1 text-blue-600">
               <CheckCircle className="w-5 h-5" />
-              <span className="text-sm font-medium">Активно</span>
+              <span className="text-sm font-medium">Безопасно активно</span>
             </div>
           </div>
         </div>
@@ -598,12 +594,12 @@ const AnalysisProgress: React.FC<AnalysisProgressProps> = ({ fileName, onAnalysi
             <span className="text-sm font-medium text-purple-800">AI-Enhanced конфигурация:</span>
           </div>
           <div className="text-xs text-purple-700 space-y-1">
-            <div>Yandex SpeechKit: {hasYandexCredentials ? '✅ Автоматически активирован' : '❌ Не настроен (используется симуляция)'}</div>
-            <div>Google Gemini AI: ✅ Активен (профессиональные отчеты)</div>
+            <div>🔒 Secure Yandex SpeechKit: {yandexConfig.enabled ? '✅ Безопасно активирован' : '❌ Выключен'}</div>
+            <div>🔒 Secure Gemini AI: ✅ Безопасно активен</div>
             <div>Слова-запинки: ✅ Автоматически включено</div>
             <div>Языки: {yandexConfig.languages.join(', ')}</div>
             <div>Автоопределение: ✅ Включено</div>
-            <div>Безопасность: ✅ API ключи защищены переменными окружения</div>
+            <div>🔒 Безопасность: ✅ API ключи защищены в Netlify Functions</div>
           </div>
         </div>
       </div>

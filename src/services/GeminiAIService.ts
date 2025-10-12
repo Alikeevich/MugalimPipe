@@ -1,4 +1,5 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+// ВАЖНО: Google Gemini API ключ теперь перенесен в Netlify Functions для безопасности!
+// Этот сервис теперь работает через безопасные serverless функции
 
 export interface GeminiAnalysisRequest {
   transcription: string;
@@ -47,39 +48,48 @@ export interface GeminiReportResponse {
 }
 
 class GeminiAIService {
-  private genAI: GoogleGenerativeAI;
-  private model: any;
+  private netlifyFunctionUrl: string;
 
   constructor() {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      throw new Error('Gemini API key not found in environment variables');
-    }
-    
-    this.genAI = new GoogleGenerativeAI(apiKey);
-    this.model = this.genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    // URL Netlify Function для безопасной работы с Gemini AI
+    this.netlifyFunctionUrl = '/.netlify/functions/gemini-analyze';
   }
 
   /**
-   * Generates a comprehensive professional report using Gemini AI
+   * Generates a comprehensive professional report using secure Netlify Function
    */
   async generateProfessionalReport(analysisData: GeminiAnalysisRequest): Promise<GeminiReportResponse> {
     try {
-      console.log('🤖 Starting Gemini AI analysis for professional report...');
+      console.log('🤖 Starting secure Gemini AI analysis via Netlify Function...');
       
-      const prompt = this.buildComprehensivePrompt(analysisData);
+      // Отправляем запрос в безопасную Netlify Function
+      const response = await fetch(this.netlifyFunctionUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'generate-professional-report',
+          analysisData,
+          language: analysisData.userLanguage
+        })
+      });
       
-      const result = await this.model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       
-      console.log('✅ Gemini AI analysis completed');
+      const result = await response.json();
       
-      // Parse the structured response
-      return this.parseGeminiResponse(text, analysisData.userLanguage);
+      if (!result.success) {
+        throw new Error(result.error || 'Professional report generation failed');
+      }
+      
+      console.log('✅ Secure Gemini AI analysis completed');
+      return result.result;
       
     } catch (error) {
-      console.error('❌ Gemini AI analysis failed:', error);
+      console.error('❌ Secure Gemini AI analysis failed:', error);
       
       // Return fallback response
       return this.generateFallbackReport(analysisData);
@@ -400,7 +410,7 @@ ${data.transcription}
   }
 
   /**
-   * Generates enhanced recommendations for specific metrics
+   * Generates enhanced recommendations via secure Netlify Function
    */
   async generateEnhancedRecommendations(
     metricType: 'posture' | 'gesticulation' | 'facial' | 'speech' | 'engagement',
@@ -410,16 +420,31 @@ ${data.transcription}
     language: 'ru' | 'kk'
   ): Promise<string[]> {
     try {
-      const prompt = this.buildMetricSpecificPrompt(metricType, currentScore, maxScore, specificData, language);
+      // Отправляем запрос в безопасную Netlify Function
+      const response = await fetch(this.netlifyFunctionUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'generate-enhanced-recommendations',
+          metricType,
+          metricData: {
+            currentScore,
+            maxScore,
+            specificData
+          },
+          language
+        })
+      });
       
-      const result = await this.model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       
-      // Extract recommendations from response
-      const recommendations = this.extractListItems(text, ['рекомендации', 'recommendations', 'ұсыныстар']);
+      const result = await response.json();
       
-      return recommendations.length > 0 ? recommendations : this.getFallbackRecommendations(metricType, language);
+      return result.success ? result.result : this.getFallbackRecommendations(metricType, language);
       
     } catch (error) {
       console.error('Failed to generate enhanced recommendations:', error);
@@ -536,14 +561,44 @@ ${data.transcription}
   }
 
   /**
-   * Gets service status
+   * Gets service status (API key now safely stored on server)
    */
   getStatus(): { configured: boolean; model: string; version: string } {
     return {
-      configured: !!process.env.GEMINI_API_KEY,
+      configured: true, // Всегда true, так как ключ на сервере
       model: 'gemini-1.5-flash',
       version: '1.5'
     };
+  }
+
+  /**
+   * Tests connection to Gemini AI via secure Netlify Function
+   */
+  async testConnection(): Promise<{ success: boolean; message: string }> {
+    try {
+      const response = await fetch(this.netlifyFunctionUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'test-connection'
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      return result;
+      
+    } catch (error) {
+      return {
+        success: false,
+        message: `Connection test failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      };
+    }
   }
 }
 

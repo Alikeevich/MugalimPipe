@@ -1,0 +1,35 @@
+# Netlify configuration for secure API deployment
+[build]
+  command = "npm run build"
+  publish = "dist"
+  functions = "netlify/functions"
+
+# Environment variables for secure API keys
+# These should be set in Netlify dashboard, not in code!
+[build.environment]
+  # YANDEX_API_KEY = "your-yandex-api-key-here"
+  # YANDEX_FOLDER_ID = "your-yandex-folder-id-here"  
+  # GEMINI_API_KEY = "your-gemini-api-key-here"
+
+# Redirects for SPA
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Headers for security
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# Function-specific headers
+[[headers]]
+  for = "/.netlify/functions/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Headers = "Content-Type"
+    Access-Control-Allow-Methods = "GET, POST, OPTIONS"

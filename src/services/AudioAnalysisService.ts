@@ -72,10 +72,7 @@ export interface AudioAnalysisConfig {
   languages?: string[];
   autoDetectLanguage?: boolean;
   includeFillerWords?: boolean;
-  yandexConfig?: {
-    apiKey: string;
-    folderId: string;
-  };
+  // API ключи удалены из фронтенда - теперь они безопасно хранятся в Netlify Functions
 }
 
 class AudioAnalysisService {
@@ -91,19 +88,12 @@ class AudioAnalysisService {
   }) {
     this.config = config;
     
-    if (config.useYandexSpeechKit && config.yandexConfig) {
+    // Инициализируем Yandex сервис без API ключей (они теперь на сервере)
+    if (config.useYandexSpeechKit) {
       this.yandexService = new YandexSpeechKitService({
-        apiKey: config.yandexConfig.apiKey,
-        folderId: config.yandexConfig.folderId,
         languages: config.languages || ['ru-RU', 'kk-KZ', 'en-US'],
         autoDetectLanguage: config.autoDetectLanguage !== false,
-        includeFillerWords: config.includeFillerWords !== false,
-        format: 'lpcm',
-        sampleRateHertz: 16000,
-        profanityFilter: false,
-        literatureText: false,
-        rawResults: true,
-        partialResults: true
+        includeFillerWords: config.includeFillerWords !== false
       });
     }
   }
@@ -199,16 +189,12 @@ class AudioAnalysisService {
           if (!connectionTest.success) {
             console.warn('⚠️ Yandex SpeechKit connection failed:', connectionTest.message);
             throw new Error(connectionTest.message);
-          }
+        if (this.config.useYandexSpeechKit) {
 
           console.log('✅ Yandex SpeechKit connection successful');
-
-          // Use intelligent chunked transcription
-          transcriptionResult = await this.yandexService.transcribeAudioChunked(
-            audioBlob,
-            (chunkProgress) => {
-              if (onProgress) onProgress(30 + (chunkProgress * 0.4)); // 30% to 70%
-            }
+            languages: this.config.languages,
+            autoDetectLanguage: this.config.autoDetectLanguage,
+            includeFillerWords: this.config.includeFillerWords
           );
           
           transcriptionMetadata = {
@@ -353,25 +339,18 @@ class AudioAnalysisService {
   updateConfig(newConfig: Partial<AudioAnalysisConfig>): void {
     this.config = { ...this.config, ...newConfig };
     
-    if (newConfig.useYandexSpeechKit && newConfig.yandexConfig) {
+    // Обновляем конфигурацию без API ключей (они на сервере)
+    if (newConfig.useYandexSpeechKit) {
       this.yandexService = new YandexSpeechKitService({
-        apiKey: newConfig.yandexConfig.apiKey,
-        folderId: newConfig.yandexConfig.folderId,
         languages: newConfig.languages || ['ru-RU', 'kk-KZ', 'en-US'],
         autoDetectLanguage: newConfig.autoDetectLanguage !== false,
-        includeFillerWords: newConfig.includeFillerWords !== false,
-        format: 'lpcm',
-        sampleRateHertz: 16000,
-        profanityFilter: false,
-        literatureText: false,
-        rawResults: true,
-        partialResults: true
+        includeFillerWords: newConfig.includeFillerWords !== false
       });
       
-      console.log('🔧 Yandex SpeechKit service updated');
+      console.log('🔧 Secure Yandex SpeechKit service updated');
     } else if (!newConfig.useYandexSpeechKit) {
       this.yandexService = null;
-      console.log('❌ Yandex SpeechKit service disabled');
+      console.log('❌ Secure Yandex SpeechKit service disabled');
     }
   }
 
@@ -379,7 +358,7 @@ class AudioAnalysisService {
     if (!this.yandexService) {
       return {
         success: false,
-        message: 'Yandex SpeechKit service not configured'
+        message: 'Secure Yandex SpeechKit service not configured'
       };
     }
 
@@ -388,30 +367,24 @@ class AudioAnalysisService {
 
   getConfigStatus(): {
     useYandexSpeechKit: boolean;
-    yandexConfigured: boolean;
+    securelyConfigured: boolean;
     ready: boolean;
     languages: string[];
     autoDetectLanguage: boolean;
     includeFillerWords: boolean;
     version: string;
-    yandexStatus?: any;
+    securityStatus: string;
   } {
     const status = {
       useYandexSpeechKit: this.config.useYandexSpeechKit,
-      yandexConfigured: !!this.yandexService,
+      securelyConfigured: !!this.yandexService,
       ready: !this.config.useYandexSpeechKit || !!this.yandexService,
       languages: this.config.languages || ['ru-RU'],
       autoDetectLanguage: this.config.autoDetectLanguage !== false,
       includeFillerWords: this.config.includeFillerWords !== false,
-      version: 'v3'
+      version: 'v3',
+      securityStatus: 'API keys secured in Netlify Functions'
     };
-
-    if (this.yandexService) {
-      return {
-        ...status,
-        yandexStatus: this.yandexService.getStatus()
-      };
-    }
 
     return status;
   }
