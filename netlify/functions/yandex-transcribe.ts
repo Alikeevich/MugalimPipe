@@ -1,365 +1,219 @@
+// netlify/functions/yandex-transcribe.ts
+
 import { Handler } from '@netlify/functions';
 import axios from 'axios';
 
-// Netlify Function для безопасной работы с Yandex SpeechKit API
-// Ключи теперь хранятся в переменных окружения Netlify, а не в фронтенде
-export const handler: Handler = async (event, context) => {
-  // Разрешаем только POST запросы
-  if (event.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS'
-      },
-      body: JSON.stringify({ error: 'Method not allowed' })
-    };
+// --- ОСНОВНОЙ ОБРАБОТЧИК ---
+export const handler: Handler = async (event) => {
+  // Обработка CORS preflight для браузеров
+  if (event.httpMethod === 'OPTIONS') {
+    return createCorsResponse(200, '');
   }
 
-  // Обработка CORS preflight
-  if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS'
-      },
-      body: ''
-    };
+  // Разрешаем только POST запросы
+  if (event.httpMethod !== 'POST') {
+    return createCorsResponse(405, { error: 'Method not allowed' });
   }
 
   try {
-    // Получаем секретные ключи из переменных окружения Netlify
-    // ВАЖНО: Эти ключи больше не попадают в фронтенд код!
     const YANDEX_API_KEY = process.env.YANDEX_API_KEY;
     const YANDEX_FOLDER_ID = process.env.YANDEX_FOLDER_ID;
 
     if (!YANDEX_API_KEY || !YANDEX_FOLDER_ID) {
-      return {
-        statusCode: 500,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ 
-          error: 'Yandex API credentials not configured on server',
-          configured: false
-        })
-      };
+      return createCorsResponse(500, {
+        error: 'Yandex API credentials not configured on server',
+        configured: false
+      });
     }
 
-    // Парсим входные данные от фронтенда
     const requestData = JSON.parse(event.body || '{}');
-    const { 
-      audioData, 
-      config = {},
-      action = 'transcribe'
-    } = requestData;
+    const { action = 'transcribe' } = requestData;
 
-    // Обработка разных типов запросов
     switch (action) {
       case 'test-connection':
         return await handleConnectionTest(YANDEX_API_KEY, YANDEX_FOLDER_ID);
       
       case 'transcribe':
-        return await handleTranscription(audioData, config, YANDEX_API_KEY, YANDEX_FOLDER_ID);
+        if (!requestData.audioData) {
+          return createCorsResponse(400, { error: 'audioData is missing' });
+        }
+        return await handleTranscription(requestData, YANDEX_API_KEY, YANDEX_FOLDER_ID);
       
       default:
-        return {
-          statusCode: 400,
-          headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ error: 'Unknown action' })
-        };
+        return createCorsResponse(400, { error: 'Unknown action' });
     }
 
   } catch (error) {
-    console.error('Yandex transcription error:', error);
-    return {
-      statusCode: 500,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ 
-        error: 'Internal server error',
-        message: error instanceof Error ? error.message : 'Unknown error'
-      })
-    };
+    console.error('Yandex function error:', error);
+    return createCorsResponse(500, { 
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : String(error)
+    });
   }
 };
 
-// Функция тестирования подключения к Yandex API
-async function handleConnectionTest(apiKey: string, folderId: string) {
+
+// --- ЛОГИКА ТРАНСКРИПЦИИ ---
+async function handleTranscription(requestData: any, apiKey: string, folderId: string) {
   try {
-    // Создаем тестовый аудио файл (1 секунда тишины)
-    const testAudio = createTestAudioBuffer();
-    
-    const headers = {
-      'Authorization': `Api-Key ${apiKey}`,
-      'x-folder-id': folderId,
-      'Content-Type': 'application/octet-stream'
-    };
-
-    const recognitionConfig = {
-      format: 'lpcm',
-      sampleRateHertz: 16000,
-      profanityFilter: false,
-      literature_text: false,
-      raw_results: true,
-      enable_word_time_offsets: true,
-      lang: 'ru-RU'
-    };
-
-    const params = new URLSearchParams(recognitionConfig as any);
-    const url = `https://stt.api.cloud.yandex.net/speech/v3/stt:recognize?${params.toString()}`;
-
-    const response = await axios.post(url, testAudio, {
-      headers,
-      timeout: 30000
-    });
-
-    return {
-      statusCode: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        success: true,
-        message: 'Yandex SpeechKit connection successful',
-        features: ['v3 API', 'Multilingual', 'Filler Words', 'Auto Detection'],
-        configured: true
-      })
-    };
-
-  } catch (error) {
-    console.error('Yandex connection test failed:', error);
-    return {
-      statusCode: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        success: false,
-        message: `Connection failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        configured: true
-      })
-    };
-  }
-}
-
-// Функция транскрипции аудио
-async function handleTranscription(audioData: any, config: any, apiKey: string, folderId: string) {
-  try {
-    // Конвертируем base64 аудио данные в ArrayBuffer
+    const { audioData, config = {} } = requestData;
     const audioBuffer = Buffer.from(audioData, 'base64');
     
-    const headers = {
-      'Authorization': `Api-Key ${apiKey}`,
-      'x-folder-id': folderId,
-      'Content-Type': 'application/octet-stream'
-    };
-
-    // Конфигурация для максимального качества и детекции слов-запинок
+    // --- ИСПРАВЛЕНИЕ №1: Используем API v1 ---
+    // API v1 проще, надежнее для файлов до 1 МБ и поддерживает все нужные функции.
+    // Автоопределение языка в v1 не поддерживается, поэтому мы берем первый язык из списка.
     const recognitionConfig = {
+      lang: config.languages?.[0] || 'ru-RU', // v1 не поддерживает auto-detect, берем первый язык
+      folderId: folderId, // folderId передается как параметр, а не заголовок в v1
       format: config.format || 'lpcm',
       sampleRateHertz: config.sampleRateHertz || 16000,
-      profanityFilter: false, // Отключаем для сохранения слов-запинок
-      literature_text: false, // Отключаем для сырого текста
-      raw_results: true, // Включаем для получения всех результатов
-      partial_results: true,
-      enable_automatic_punctuation: false,
-      enable_word_time_offsets: true,
-      ...(config.autoDetectLanguage ? {
-        languageRestriction: config.languages || ['ru-RU', 'kk-KZ', 'en-US'],
-        autoDetectLanguage: true
-      } : {
-        lang: config.languages?.[0] || 'ru-RU'
-      })
+      profanityFilter: 'false',
+      topic: 'general',
+      rawResults: 'true', // Для получения детальной информации о словах
     };
 
-    const params = new URLSearchParams(recognitionConfig as any);
-    const url = `https://stt.api.cloud.yandex.net/speech/v3/stt:recognize?${params.toString()}`;
+    const params = new URLSearchParams(recognitionConfig);
+    const url = `https://stt.api.cloud.yandex.net/speech/v1/stt:recognize?${params.toString()}`;
 
     const response = await axios.post(url, audioBuffer, {
-      headers,
-      timeout: 120000, // 2 минуты для больших файлов
-      maxContentLength: 50 * 1024 * 1024,
-      maxBodyLength: 50 * 1024 * 1024
+      headers: {
+        'Authorization': `Api-Key ${apiKey}`,
+        // 'Content-Type' не нужен, axios определит его для Buffer
+      },
+      timeout: 120000, // 2 минуты
     });
 
-    // Обрабатываем ответ и анализируем слова-запинки
-    const processedResult = processYandexResponse(response.data, config);
-
-    return {
-      statusCode: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        success: true,
-        result: processedResult
-      })
-    };
+    const processedResult = processYandexResponse(response.data, recognitionConfig.lang);
+    
+    return createCorsResponse(200, { success: true, result: processedResult });
 
   } catch (error) {
-    console.error('Yandex transcription failed:', error);
-    return {
-      statusCode: 500,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
+    console.error('Yandex transcription failed:', axios.isAxiosError(error) ? error.response?.data : error);
+    return createCorsResponse(500, {
         success: false,
-        error: error instanceof Error ? error.message : 'Transcription failed'
-      })
-    };
+        error: `Transcription failed: ${error.message}`
+    });
   }
 }
 
-// Обработка ответа от Yandex API с анализом слов-запинок
-function processYandexResponse(response: any, config: any) {
-  if (!response.result || !response.result.alternatives || response.result.alternatives.length === 0) {
-    return {
-      text: '',
-      confidence: 0,
-      words: [],
-      duration: 0,
-      detectedLanguages: [],
-      fillerWordsAnalysis: {
-        totalFillerWords: 0,
-        fillerWordsRatio: 0,
-        commonFillers: [],
-        fillerWordsByLanguage: {}
-      }
-    };
+// --- ТЕСТИРОВАНИЕ СОЕДИНЕНИЯ ---
+async function handleConnectionTest(apiKey: string, folderId: string) {
+    // Для теста достаточно просто проверить, что ключи есть.
+    // Реальный запрос не нужен, чтобы не тратить квоты.
+    return createCorsResponse(200, {
+        success: true,
+        message: 'Yandex SpeechKit credentials are configured on the server.',
+        features: ['v1 API', 'Multilingual (manual select)', 'Filler Words (manual detect)'],
+        configured: true
+    });
+}
+
+
+// --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ---
+
+// Обработка ответа от Yandex и анализ слов-паразитов
+function processYandexResponse(response: any, languageCode: string) {
+  if (!response.result) {
+    return createEmptyResult();
   }
 
-  const bestAlternative = response.result.alternatives[0];
+  // В v1 ответ немного отличается, нет `alternatives`
+  const wordsData = response.result.split('\n')
+    .filter(Boolean)
+    .map((line: string) => JSON.parse(line));
   
-  // Словарь слов-запинок для разных языков
-  const fillerWordsDict: { [key: string]: string[] } = {
-    'ru-RU': ['эм', 'эмм', 'эммм', 'ах', 'ну', 'мм', 'ммм', 'хм', 'так', 'значит', 'короче', 'типа', 'как бы', 'вот', 'это'],
-    'kk-KZ': ['әм', 'әмм', 'міне', 'осылай', 'яғни', 'қысқасы', 'түрі', 'сияқты'],
-    'en-US': ['um', 'uh', 'er', 'ah', 'like', 'you know', 'so', 'well', 'actually']
-  };
+  if (wordsData.length === 0 || !wordsData[0].result) {
+    return createEmptyResult();
+  }
+  
+  const allWords = wordsData.flatMap(chunk => chunk.result.words);
+  const fullText = allWords.map(w => w.word).join(' ');
 
-  // Обрабатываем слова с временными метками
-  const words = bestAlternative.words?.map((word: any) => {
+  const words = allWords.map((word: any) => {
     const processedWord = {
       word: word.word,
-      startTime: parseTimeString(word.startTime),
-      endTime: parseTimeString(word.endTime),
+      startTime: parseFloat(word.startTime),
+      endTime: parseFloat(word.endTime),
       confidence: word.confidence,
       isFillerWord: false,
       wordType: 'word' as 'word' | 'filler' | 'pause' | 'noise'
     };
-
-    // Проверяем, является ли слово словом-запинкой
-    const languageCode = response.result.languageCode || 'ru-RU';
-    const fillers = fillerWordsDict[languageCode] || fillerWordsDict['ru-RU'];
-    const normalizedWord = word.word.toLowerCase().trim();
     
-    if (fillers.includes(normalizedWord)) {
+    const isFiller = isFillerWord(word.word, languageCode);
+    if (isFiller) {
       processedWord.isFillerWord = true;
       processedWord.wordType = 'filler';
     }
-
     return processedWord;
-  }) || [];
+  });
 
-  // Анализируем слова-запинки
   const fillerWords = words.filter(w => w.isFillerWord);
-  const fillerWordsAnalysis = analyzeFillerWords(fillerWords, words.length, response.result.languageCode);
-
-  // Определяем обнаруженные языки
-  const detectedLanguages = bestAlternative.languages?.map((lang: any) => ({
-    languageCode: lang.languageCode,
-    probability: lang.probability,
-    text: bestAlternative.text
-  })) || [];
+  const fillerWordsAnalysis = analyzeFillerWords(fillerWords, words.length, languageCode);
 
   return {
-    text: bestAlternative.text,
-    confidence: bestAlternative.confidence,
+    text: fullText,
+    confidence: wordsData[0].result.confidence,
     words,
     duration: words.length > 0 ? Math.max(...words.map(w => w.endTime)) : 0,
-    detectedLanguages,
+    detectedLanguages: [{ languageCode, probability: 1.0, text: fullText }],
     fillerWordsAnalysis
   };
 }
 
-// Анализ слов-запинок
+// Проверка на слово-паразит
+function isFillerWord(word: string, lang: string): boolean {
+  const fillerWordsDict: { [key: string]: string[] } = {
+    'ru-RU': ['эм', 'эмм', 'ээ', 'ах', 'ну', 'мм', 'хм', 'так', 'значит', 'короче', 'типа', 'как-бы', 'вот', 'это'],
+    'kk-KZ': ['әм', 'міне', 'осылай', 'яғни', 'қысқасы', 'түрі', 'сияқты'],
+    'en-US': ['um', 'uh', 'er', 'ah', 'like', 'you know', 'so', 'well', 'actually']
+  };
+  const normalizedWord = word.toLowerCase().trim().replace(/[.,]/g, '');
+  const langKey = lang.split('-')[0]; // 'ru', 'kk', 'en'
+  const fillers = fillerWordsDict[lang] || fillerWordsDict[`${langKey}-RU`] || fillerWordsDict[`${langKey}-US`] || [];
+  return fillers.includes(normalizedWord);
+}
+
+// Анализ статистики слов-паразитов
 function analyzeFillerWords(fillerWords: any[], totalWords: number, languageCode: string) {
   const fillerCounts: { [key: string]: { count: number; timestamps: number[] } } = {};
-  
   fillerWords.forEach(filler => {
-    if (!fillerCounts[filler.word]) {
-      fillerCounts[filler.word] = { count: 0, timestamps: [] };
+    const word = filler.word.toLowerCase();
+    if (!fillerCounts[word]) {
+      fillerCounts[word] = { count: 0, timestamps: [] };
     }
-    fillerCounts[filler.word].count++;
-    fillerCounts[filler.word].timestamps.push(filler.startTime);
+    fillerCounts[word].count++;
+    fillerCounts[word].timestamps.push(filler.startTime);
   });
   
   const commonFillers = Object.entries(fillerCounts)
-    .map(([word, data]) => ({
-      word,
-      count: data.count,
-      timestamps: data.timestamps
-    }))
+    .map(([word, data]) => ({ word, count: data.count, timestamps: data.timestamps }))
     .sort((a, b) => b.count - a.count);
   
   return {
     totalFillerWords: fillerWords.length,
     fillerWordsRatio: totalWords > 0 ? fillerWords.length / totalWords : 0,
     commonFillers,
-    fillerWordsByLanguage: {
-      [languageCode]: fillerWords.length
-    }
+    fillerWordsByLanguage: { [languageCode]: fillerWords.length }
   };
 }
 
-// Парсинг временных меток
-function parseTimeString(timeStr: string): number {
-  if (!timeStr) return 0;
-  const match = timeStr.match(/^(\d+(?:\.\d+)?)s?$/);
-  return match ? parseFloat(match[1]) : 0;
+// Создание пустого результата
+function createEmptyResult() {
+  return {
+    text: '', confidence: 0, words: [], duration: 0,
+    detectedLanguages: [],
+    fillerWordsAnalysis: analyzeFillerWords([], 0, 'ru-RU')
+  };
 }
 
-// Создание тестового аудио буфера
-function createTestAudioBuffer(): Buffer {
-  const sampleRate = 16000;
-  const duration = 1; // 1 секунда
-  const samples = sampleRate * duration;
-  
-  // Создаем WAV заголовок + тишина
-  const buffer = Buffer.alloc(44 + samples * 2);
-  
-  // WAV заголовок
-  buffer.write('RIFF', 0);
-  buffer.writeUInt32LE(36 + samples * 2, 4);
-  buffer.write('WAVE', 8);
-  buffer.write('fmt ', 12);
-  buffer.writeUInt32LE(16, 16);
-  buffer.writeUInt16LE(1, 20); // PCM
-  buffer.writeUInt16LE(1, 22); // mono
-  buffer.writeUInt32LE(sampleRate, 24);
-  buffer.writeUInt32LE(sampleRate * 2, 28);
-  buffer.writeUInt16LE(2, 32);
-  buffer.writeUInt16LE(16, 34);
-  buffer.write('data', 36);
-  buffer.writeUInt32LE(samples * 2, 40);
-  
-  // Данные (тишина)
-  buffer.fill(0, 44);
-  
-  return buffer;
+// Создание ответа с CORS заголовками
+function createCorsResponse(statusCode: number, body: any) {
+  return {
+    statusCode,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(body)
+  };
 }
