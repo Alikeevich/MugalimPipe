@@ -1,4 +1,4 @@
-# 🔒 MugalimPipe - Secure AI Teacher Performance Analyzer
+# 🔒 MugalimPipe - Secure Teaching Analysis Platform
 
 ## 🛡️ Security Features
 
