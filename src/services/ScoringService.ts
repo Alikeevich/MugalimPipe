@@ -257,14 +257,29 @@ class ScoringService {
 
     // Анализ каждого кадра
     poseData.forEach((frame, index) => {
+      if (!frame || !frame.landmarks || !Array.isArray(frame.landmarks) || frame.landmarks.length < 25) {
+        return; // Skip invalid frames
+      }
+
       const landmarks = frame.landmarks;
-      
+
       // Анализ выравнивания позвоночника
       const nose = landmarks[0];
       const leftShoulder = landmarks[11];
       const rightShoulder = landmarks[12];
       const leftHip = landmarks[23];
       const rightHip = landmarks[24];
+
+      // Validate required landmarks
+      if (!nose || !leftShoulder || !rightShoulder || !leftHip || !rightHip) {
+        return; // Skip frames with missing landmarks
+      }
+
+      if (typeof nose.x !== 'number' || typeof leftShoulder.x !== 'number' ||
+          typeof rightShoulder.x !== 'number' || typeof leftHip.x !== 'number' ||
+          typeof rightHip.x !== 'number') {
+        return; // Skip frames with invalid data
+      }
 
       // Центр плеч и бедер
       const shoulderCenter = {

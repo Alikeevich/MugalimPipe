@@ -51,8 +51,8 @@ class GeminiAIService {
   private netlifyFunctionUrl: string;
 
   constructor() {
-    // URL Netlify Function для безопасной работы с Gemini AI
-    this.netlifyFunctionUrl = '/.netlify/functions/gemini-analyze';
+    // URL Vercel Serverless Function для безопасной работы с Gemini AI
+    this.netlifyFunctionUrl = '/api/gemini-analyze';
   }
 
   /**

@@ -93,8 +93,8 @@ class YandexSpeechKitService {
       ...config
     };
     
-    // URL Netlify Function для безопасной работы с Yandex API
-    this.netlifyFunctionUrl = '/.netlify/functions/yandex-transcribe';
+    // URL Vercel Serverless Function для безопасной работы с Yandex API
+    this.netlifyFunctionUrl = '/api/yandex-transcribe';
   }
 
   /**
@@ -736,11 +736,14 @@ class YandexSpeechKitService {
    * Handles API errors with multilingual messages
    */
   private handleApiError(error: any): Error {
-    if (axios.isAxiosError(error)) {
+    if (error instanceof Error) {
+      return error;
+    }
+
+    if (typeof error === 'object' && error !== null) {
       if (error.response) {
         const status = error.response.status;
-        const data = error.response.data;
-        
+
         switch (status) {
           case 401:
             return new Error('Неверный API ключ. Проверьте правильность ключа. / API кілті дұрыс емес.');
@@ -751,13 +754,13 @@ class YandexSpeechKitService {
           case 413:
             return new Error('Файл слишком большой. Максимальный размер: 1ГБ. / Файл тым үлкен.');
           default:
-            return new Error(`API ошибка: ${status} - ${JSON.stringify(data)}`);
+            return new Error(`API ошибка: ${status}`);
         }
       } else if (error.request) {
         return new Error('Ошибка сети: Не удается подключиться к Yandex SpeechKit API / Желі қатесі');
       }
     }
-    
+
     return new Error(`Ошибка транскрипции: ${error}`);
   }
 
