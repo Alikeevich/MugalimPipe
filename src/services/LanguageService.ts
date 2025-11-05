@@ -199,7 +199,7 @@ class LanguageService {
     this.texts = {
       ru: {
         // Header
-        appTitle: "AI Педагог Анализатор",
+        appTitle: "Mugalim-Pipe",
         appSubtitle: "Улучшайте свои педагогические навыки с помощью MediaPipe и ИИ",
         teachersCount: "5000+ педагогов",
         improvementRate: "98% улучшений",
@@ -390,7 +390,7 @@ class LanguageService {
 
       kk: {
         // Header
-        appTitle: "AI Мұғалім Анализаторы",
+        appTitle: "Mugalim-Pipe",
         appSubtitle: "MediaPipe және AI көмегімен педагогикалық дағдыларыңызды жетілдіріңіз",
         teachersCount: "5000+ мұғалім",
         improvementRate: "98% жақсарту",
