@@ -1,6 +1,3 @@
-// ВАЖНО: Все API ключи теперь перенесены в Netlify Functions для безопасности!
-// Этот сервис теперь работает через безопасные serverless функции
-
 export interface YandexSpeechKitConfig {
   // API ключи удалены из фронтенда для безопасности
   languages?: string[];
@@ -165,25 +162,16 @@ class YandexSpeechKitService {
     };
   }
 
-  /**
-   * Sets languages for multilingual recognition
-   */
   setLanguages(languages: string[]): void {
     this.config.languages = languages;
     console.log(`Yandex SpeechKit languages set to: ${languages.join(', ')}`);
   }
 
-  /**
-   * Enables or disables automatic language detection
-   */
   setAutoDetectLanguage(enabled: boolean): void {
     this.config.autoDetectLanguage = enabled;
     console.log(`Yandex SpeechKit auto-detection: ${enabled ? 'enabled' : 'disabled'}`);
   }
 
-  /**
-   * Enables or disables filler words transcription
-   */
   setIncludeFillerWords(enabled: boolean): void {
     this.config.includeFillerWords = enabled;
     this.config.literatureText = !enabled; // Отключаем литературную обработку при включении слов-запинок
@@ -191,9 +179,6 @@ class YandexSpeechKitService {
     console.log(`Yandex SpeechKit filler words: ${enabled ? 'enabled' : 'disabled'}`);
   }
 
-  /**
-   * Gets supported languages for CIS region
-   */
   getSupportedLanguages(): Array<{ code: string; name: string; nativeName: string; region: string }> {
     return [
       { code: 'ru-RU', name: 'Russian', nativeName: 'Русский', region: 'Russia' },
