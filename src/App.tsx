@@ -61,7 +61,7 @@ function App() {
               <h1 className="text-lg font-bold tracking-tight text-slate-900">
                 Lesson<span className="text-indigo-600">AI</span>
               </h1>
-              <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">Teacher Copilot</p>
+              <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">Улучшайте свои педагогические навыки с помощью MediaPipe и ИИ</p>
             </div>
           </div>
           
