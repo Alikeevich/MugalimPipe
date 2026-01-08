@@ -39,7 +39,7 @@ const UploadSection: React.FC<UploadSectionProps> = ({ onFileUpload }) => {
       <div className="text-center mb-16 space-y-4">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-semibold uppercase tracking-wide mb-2">
           <Sparkles className="w-3 h-3" />
-          AI-Powered Analysis 2.0
+          AI-Magic is on
         </div>
         <h1 className="text-5xl md:text-6xl font-extrabold text-slate-900 tracking-tight">
           Улучшайте навыки преподавания <br className="hidden md:block"/>
