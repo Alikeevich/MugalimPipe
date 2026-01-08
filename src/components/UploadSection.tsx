@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Upload, Play, FileVideo, Clock, CheckCircle } from 'lucide-react';
+import { Upload, FileVideo, Zap, Video, ShieldCheck, Sparkles, ArrowRight } from 'lucide-react';
 
 interface UploadSectionProps {
   onFileUpload: (file: File) => void;
@@ -23,173 +23,121 @@ const UploadSection: React.FC<UploadSectionProps> = ({ onFileUpload }) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const file = e.dataTransfer.files[0];
-      if (file.type.startsWith('video/')) {
-        setUploadedFile(file);
-      }
+    if (e.dataTransfer.files?.[0]?.type.startsWith('video/')) {
+      setUploadedFile(e.dataTransfer.files[0]);
     }
   }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      if (file.type.startsWith('video/')) {
-        setUploadedFile(file);
-      }
+    if (e.target.files?.[0]?.type.startsWith('video/')) {
+      setUploadedFile(e.target.files[0]);
     }
-  };
-
-  const handleAnalyze = () => {
-    if (uploadedFile) {
-      onFileUpload(uploadedFile);
-    }
-  };
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
-
-  const formatDuration = (file: File) => {
-    // В реальном приложении здесь бы был код для получения длительности видео
-    return "~12 мин";
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
-      {/* Hero Section */}
-      <div className="text-center mb-12">
-        <h1 className="text-5xl font-bold text-gray-900 mb-6">
-          Проанализируйте свой урок
-          <span className="block text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600">
-            с помощью ИИ
+    <div className="max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="text-center mb-16 space-y-4">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-semibold uppercase tracking-wide mb-2">
+          <Sparkles className="w-3 h-3" />
+          AI-Powered Analysis 2.0
+        </div>
+        <h1 className="text-5xl md:text-6xl font-extrabold text-slate-900 tracking-tight">
+          Улучшайте навыки преподавания <br className="hidden md:block"/>
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600">
+            с помощью Искусственного Интеллекта
           </span>
         </h1>
-        <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-          Загрузите видео своего урока (10-15 минут) и получите детальный анализ 
-          вашей позы, жестикуляции, мимики и речи с персональными рекомендациями от ИИ
+        <p className="text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed">
+          Загрузите видео урока. Наш AI проанализирует 1000+ параметров: от микровыражений лица до структуры речи и вовлеченности аудитории.
         </p>
       </div>
 
-      {/* Upload Area */}
-      <div className="bg-white/70 backdrop-blur-sm rounded-3xl p-8 border border-white/20 shadow-xl">
-        {!uploadedFile ? (
-          <div
-            className={`relative border-2 border-dashed rounded-2xl p-12 text-center transition-all duration-300 ${
+      <div className="grid lg:grid-cols-5 gap-8">
+        {/* Upload Card */}
+        <div className="lg:col-span-3">
+          <div 
+            className={`relative group h-full min-h-[400px] flex flex-col items-center justify-center rounded-3xl border-2 border-dashed transition-all duration-300 overflow-hidden bg-white shadow-sm ${
               dragActive 
-                ? 'border-indigo-500 bg-indigo-50/50' 
-                : 'border-gray-300 hover:border-indigo-400 hover:bg-indigo-50/30'
+                ? 'border-indigo-500 bg-indigo-50/50 scale-[1.02]' 
+                : 'border-slate-200 hover:border-indigo-400 hover:bg-slate-50'
             }`}
             onDragEnter={handleDrag}
             onDragLeave={handleDrag}
             onDragOver={handleDrag}
             onDrop={handleDrop}
           >
-            <div className="flex flex-col items-center space-y-6">
-              <div className="w-20 h-20 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center">
-                <Upload className="w-10 h-10 text-white" />
-              </div>
-              
-              <div>
-                <h3 className="text-2xl font-semibold text-gray-900 mb-2">
-                  Загрузите видео урока
-                </h3>
-                <p className="text-gray-600 mb-6">
-                  Перетащите файл сюда или нажмите для выбора
+            {!uploadedFile ? (
+              <div className="text-center p-10 z-10">
+                <div className="w-20 h-20 bg-indigo-100 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
+                  <Upload className="w-10 h-10 text-indigo-600" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-2">Перетащите видео сюда</h3>
+                <p className="text-slate-500 mb-8 max-w-xs mx-auto">
+                  MP4, MOV, AVI (макс. 500 МБ)<br/>
+                  Рекомендуемая длительность: 10-15 мин
                 </p>
-                
-                <label className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-medium rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 cursor-pointer shadow-lg hover:shadow-xl">
-                  <FileVideo className="w-5 h-5 mr-2" />
-                  Выбрать файл
-                  <input
-                    type="file"
-                    accept="video/*"
-                    onChange={handleFileChange}
-                    className="hidden"
-                  />
+                <label className="relative inline-flex items-center justify-center px-8 py-3.5 text-sm font-semibold text-white transition-all duration-200 bg-slate-900 rounded-xl hover:bg-slate-800 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer">
+                  Выбрать файл вручную
+                  <input type="file" accept="video/*" onChange={handleFileChange} className="hidden" />
                 </label>
               </div>
-              
-              <div className="text-sm text-gray-500">
-                <p>Поддерживаемые форматы: MP4, AVI, MOV, WebM</p>
-                <p>Рекомендуемая длительность: 10-15 минут</p>
-                <p>Максимальный размер: 500 МБ</p>
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center p-10 bg-white">
+                <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mb-6 animate-bounce">
+                  <FileVideo className="w-10 h-10 text-green-600" />
+                </div>
+                <h3 className="text-2xl font-bold text-slate-900 mb-2 truncate max-w-md">{uploadedFile.name}</h3>
+                <p className="text-slate-500 mb-8">
+                  {(uploadedFile.size / (1024 * 1024)).toFixed(2)} MB • Готово к анализу
+                </p>
+                <div className="flex gap-3">
+                  <button 
+                    onClick={() => setUploadedFile(null)}
+                    className="px-6 py-3 text-sm font-semibold text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200 transition-colors"
+                  >
+                    Отмена
+                  </button>
+                  <button 
+                    onClick={() => onFileUpload(uploadedFile)}
+                    className="flex items-center gap-2 px-8 py-3 text-sm font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all hover:scale-105"
+                  >
+                    Запустить AI Анализ
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
+            
+            {/* Decorative background pattern */}
+            <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[radial-gradient(#4f46e5_1px,transparent_1px)] [background-size:16px_16px]"></div>
           </div>
-        ) : (
-          <div className="space-y-6">
-            {/* File Preview */}
-            <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6 border border-green-200">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center">
-                    <CheckCircle className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      {uploadedFile.name}
-                    </h3>
-                    <div className="flex items-center space-x-4 text-sm text-gray-600">
-                      <span className="flex items-center">
-                        <FileVideo className="w-4 h-4 mr-1" />
-                        {formatFileSize(uploadedFile.size)}
-                      </span>
-                      <span className="flex items-center">
-                        <Clock className="w-4 h-4 mr-1" />
-                        {formatDuration(uploadedFile)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                
-                <button
-                  onClick={() => setUploadedFile(null)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
+        </div>
+
+        {/* Features Sidebar */}
+        <div className="lg:col-span-2 space-y-4">
+          {[
+            { title: "MediaPipe Tracking", desc: "33 точки тела, 468 точек лица", icon: Video, color: "text-blue-600 bg-blue-50" },
+            { title: "Voice Analysis", desc: "Тон, темп, слова-паразиты", icon: Zap, color: "text-amber-600 bg-amber-50" },
+            { title: "Secure Processing", desc: "Данные не сохраняются", icon: ShieldCheck, color: "text-green-600 bg-green-50" },
+          ].map((feature, idx) => (
+            <div key={idx} className="flex items-start gap-4 p-5 rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+              <div className={`p-3 rounded-xl ${feature.color}`}>
+                <feature.icon className="w-6 h-6" />
+              </div>
+              <div>
+                <h4 className="font-bold text-slate-900">{feature.title}</h4>
+                <p className="text-sm text-slate-500 mt-1">{feature.desc}</p>
               </div>
             </div>
-            
-            {/* Analysis Features */}
-            <div className="grid md:grid-cols-2 gap-4">
-              {[
-                { label: "Анализ позы и осанки", icon: "🧍‍♂️" },
-                { label: "Оценка жестикуляции", icon: "👋" },
-                { label: "Анализ мимики", icon: "😊" },
-                { label: "Словарный запас", icon: "📚" },
-                { label: "Структура речи", icon: "🗣️" },
-                { label: "ИИ рекомендации", icon: "🤖" }
-              ].map((feature, index) => (
-                <div key={index} className="flex items-center space-x-3 p-3 bg-white/50 rounded-lg">
-                  <span className="text-2xl">{feature.icon}</span>
-                  <span className="text-gray-700">{feature.label}</span>
-                </div>
-              ))}
-            </div>
-            
-            {/* Analyze Button */}
-            <button
-              onClick={handleAnalyze}
-              className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-4 px-6 rounded-2xl font-semibold text-lg hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center space-x-3"
-            >
-              <Play className="w-6 h-6" />
-              <span>Начать анализ урока</span>
-            </button>
-            
-            <p className="text-center text-sm text-gray-500">
-              Анализ займет около 2-3 минут. Мы используем передовые технологии MediaPipe и Google Gemini AI
+          ))}
+          
+          <div className="p-6 rounded-3xl bg-gradient-to-br from-slate-900 to-slate-800 text-white mt-4">
+            <h4 className="font-bold text-lg mb-2">Как это работает?</h4>
+            <p className="text-slate-300 text-sm leading-relaxed">
+              Мы используем комбинацию компьютерного зрения и LLM для создания психологического и профессионального портрета преподавателя за секунды.
             </p>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
