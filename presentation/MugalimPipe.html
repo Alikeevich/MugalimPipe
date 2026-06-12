@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MugalimPipe — презентация</title>
+<style>
+  :root{
+    --bg:#0C0B0D; --surface:#151317; --surface2:#1C191F;
+    --ink:#F3EFEA; --dim:rgba(243,239,234,.62); --faint:rgba(243,239,234,.40);
+    --accent:#9B2D3C; --accent-light:#B84455; --gold:#D2A24C; --gold-light:#E6C079;
+    --green:#6FA876; --hair:rgba(255,255,255,.09); --hair2:rgba(255,255,255,.16);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--bg); color:var(--ink); overflow:hidden;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,system-ui,sans-serif;
+    letter-spacing:-.011em; -webkit-font-smoothing:antialiased;
+  }
+  /* фоновое тёплое свечение */
+  body::before{
+    content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+    background:radial-gradient(120% 70% at 50% -10%, rgba(155,45,60,.16), transparent 60%);
+  }
+  .deck{position:relative; z-index:1; height:100vh; width:100vw}
+  .slide{
+    position:absolute; inset:0; display:none;
+    flex-direction:column; justify-content:center;
+    padding:clamp(28px,7vw,110px); max-width:1200px; margin:0 auto;
+    opacity:0; transform:translateY(14px); transition:opacity .5s ease, transform .5s ease;
+  }
+  .slide.active{display:flex; opacity:1; transform:none}
+
+  .eyebrow{
+    display:inline-flex; align-items:center; gap:9px; align-self:flex-start;
+    font-size:12px; text-transform:uppercase; letter-spacing:.2em; color:var(--dim);
+    border:1px solid var(--hair); border-radius:999px; padding:7px 14px; margin-bottom:28px;
+  }
+  .eyebrow .dot{width:6px;height:6px;border-radius:50%;background:var(--gold)}
+
+  h1{font-size:clamp(40px,8vw,104px); font-weight:800; line-height:.98; letter-spacing:-.04em}
+  h2{font-size:clamp(28px,4.6vw,56px); font-weight:700; line-height:1.04; letter-spacing:-.03em; margin-bottom:10px}
+  .lead{font-size:clamp(17px,2.2vw,26px); color:var(--dim); max-width:46ch; line-height:1.5; margin-top:22px}
+  .sub{color:var(--gold)}
+  .grad{background:linear-gradient(100deg,var(--gold-light),var(--gold) 45%,var(--accent-light));
+        -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent}
+
+  .kicker{font-size:13px;text-transform:uppercase;letter-spacing:.18em;color:var(--faint);margin-bottom:14px}
+
+  .grid{display:grid; gap:16px; margin-top:34px}
+  .g2{grid-template-columns:repeat(2,1fr)}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  @media(max-width:760px){.g2,.g3{grid-template-columns:1fr}}
+
+  .card{background:var(--surface); border:1px solid var(--hair); border-radius:16px; padding:22px 22px}
+  .card .n{font-size:13px; font-weight:700; color:var(--gold); letter-spacing:.06em}
+  .card h3{font-size:19px; font-weight:600; margin:10px 0 6px}
+  .card p{font-size:14.5px; color:var(--dim); line-height:1.5}
+
+  .steps{display:flex; gap:14px; margin-top:36px; flex-wrap:wrap}
+  .step{flex:1 1 200px; background:var(--surface); border:1px solid var(--hair); border-radius:16px; padding:22px}
+  .step .num{font-size:13px; color:var(--faint); letter-spacing:.1em}
+  .step h3{font-size:20px; font-weight:600; margin:12px 0 6px}
+  .step p{font-size:14px; color:var(--dim); line-height:1.5}
+
+  .metrics{display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-top:36px}
+  @media(max-width:760px){.metrics{grid-template-columns:repeat(2,1fr)}}
+  .metric{background:var(--surface); border:1px solid var(--hair); border-radius:14px; padding:18px 16px}
+  .metric .top{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:10px}
+  .metric .name{font-size:16px; font-weight:600}
+  .metric .pts{font-size:12px; color:var(--gold); font-weight:700}
+  .metric ul{list-style:none; font-size:12.5px; color:var(--dim); line-height:1.75}
+
+  ul.bullets{list-style:none; margin-top:30px; display:grid; gap:14px; max-width:62ch}
+  ul.bullets li{position:relative; padding-left:24px; font-size:clamp(15px,1.9vw,19px); color:var(--ink); line-height:1.45}
+  ul.bullets li::before{content:""; position:absolute; left:0; top:.62em; width:8px; height:8px; border-radius:50%; background:var(--accent-light)}
+  ul.bullets li span{color:var(--dim)}
+
+  .two{display:grid; grid-template-columns:1.1fr 1fr; gap:40px; align-items:center; margin-top:10px}
+  @media(max-width:860px){.two{grid-template-columns:1fr; gap:24px}}
+
+  .stat{font-size:clamp(40px,7vw,84px); font-weight:800; line-height:1}
+  .stat small{display:block; font-size:15px; font-weight:500; color:var(--dim); letter-spacing:0; margin-top:8px}
+
+  .note{margin-top:30px; font-size:14px; color:var(--faint); border-left:2px solid var(--hair2); padding-left:16px; max-width:60ch; line-height:1.55}
+
+  /* служебные элементы */
+  .progress{position:fixed; top:0; left:0; height:3px; background:linear-gradient(90deg,var(--gold),var(--accent)); z-index:5; transition:width .4s ease}
+  .counter{position:fixed; bottom:22px; right:26px; font-size:13px; color:var(--faint); z-index:5; letter-spacing:.04em}
+  .brandfoot{position:fixed; bottom:22px; left:26px; font-size:13px; color:var(--faint); z-index:5; letter-spacing:.04em}
+  .hint{position:fixed; bottom:22px; left:50%; transform:translateX(-50%); font-size:12px; color:var(--faint); z-index:5; transition:opacity .6s; letter-spacing:.06em}
+
+  @media print{
+    body{overflow:visible}
+    .progress,.counter,.brandfoot,.hint{display:none}
+    .slide{display:flex!important; opacity:1!important; transform:none!important; position:relative; height:100vh; page-break-after:always; max-width:none}
+    body::before{position:absolute}
+  }
+</style>
+</head>
+<body>
+<div class="progress" id="bar"></div>
+
+<div class="deck" id="deck">
+
+  <!-- 1 — обложка -->
+  <section class="slide active">
+    <span class="eyebrow"><span class="dot"></span> Enactus Margulan</span>
+    <h1>Mugalim<span class="grad">Pipe</span></h1>
+    <p class="lead">Объективная оценка педагогического мастерства по видеозаписи урока — и личный план роста для учителя.</p>
+  </section>
+
+  <!-- 2 — проблема -->
+  <section class="slide">
+    <div class="kicker">Проблема</div>
+    <h2>Качество преподавания почти<br>не измеряется объективно</h2>
+    <ul class="bullets">
+      <li>Обратная связь редкая и субъективная — <span>зависит от наставника и его настроения.</span></li>
+      <li>У многих учителей, особенно в регионах, <span>нет доступа к экспертной оценке.</span></li>
+      <li>Непонятно, над чем именно работать — <span>«говорите увереннее» вместо конкретики.</span></li>
+    </ul>
+  </section>
+
+  <!-- 3 — решение -->
+  <section class="slide">
+    <div class="kicker">Решение</div>
+    <h2>Одно действие — <span class="sub">полный разбор урока</span></h2>
+    <p class="lead">Учитель загружает видео своего урока. На выходе — объективная оценка по разделам, сильные стороны, зоны роста и план развития. Быстро, приватно, повторяемо.</p>
+    <div class="steps">
+      <div class="step"><div class="num">01</div><h3>Загрузка</h3><p>Запись урока в любом распространённом формате.</p></div>
+      <div class="step"><div class="num">02</div><h3>Анализ</h3><p>Поза, жесты, мимика и речь — за 2–3 минуты.</p></div>
+      <div class="step"><div class="num">03</div><h3>Отчёт</h3><p>Балл, разбор и конкретные шаги для роста.</p></div>
+    </div>
+  </section>
+
+  <!-- 4 — как работает -->
+  <section class="slide">
+    <div class="kicker">Как это работает</div>
+    <h2>Конвейер из четырёх этапов</h2>
+    <div class="grid g2">
+      <div class="card"><div class="n">ВИДЕО</div><h3>MediaPipe</h3><p>Покадрово: 33 точки позы, 468 точек лица и распознавание жестов рук — объективная геометрия движений.</p></div>
+      <div class="card"><div class="n">АУДИО</div><h3>Yandex SpeechKit</h3><p>Транскрипция речи, темп, громкость и слова-паразиты — то, что слышит аудитория.</p></div>
+      <div class="card"><div class="n">ОЦЕНКА</div><h3>Система 1000 баллов</h3><p>Признаки переводятся в баллы по прозрачным правилам — пять метрик, единая шкала.</p></div>
+      <div class="card"><div class="n">ОТЧЁТ</div><h3>Gemini 1.5 Pro</h3><p>Формирует понятный отчёт и рекомендации. Есть резервный сценарий, если ИИ недоступен.</p></div>
+    </div>
+  </section>
+
+  <!-- 5 — что оцениваем -->
+  <section class="slide">
+    <div class="kicker">Что оцениваем · 1000 баллов</div>
+    <h2>Пять метрик, по 200 баллов каждая</h2>
+    <div class="metrics">
+      <div class="metric"><div class="top"><span class="name">Поза</span><span class="pts">200</span></div>
+        <ul><li>осанка</li><li>симметрия плеч</li><li>положение головы</li><li>стабильность</li><li>уверенность</li></ul></div>
+      <div class="metric"><div class="top"><span class="name">Жесты</span><span class="pts">200</span></div>
+        <ul><li>разнообразие</li><li>частота</li><li>уместность</li><li>выразительность</li><li>ритм</li></ul></div>
+      <div class="metric"><div class="top"><span class="name">Мимика</span><span class="pts">200</span></div>
+        <ul><li>улыбка</li><li>контакт глаз</li><li>выразительность</li><li>диапазон</li><li>естественность</li></ul></div>
+      <div class="metric"><div class="top"><span class="name">Речь</span><span class="pts">200</span></div>
+        <ul><li>чёткость</li><li>темп</li><li>громкость</li><li>словарь</li><li>связность</li></ul></div>
+      <div class="metric"><div class="top"><span class="name">Вовлечённость</span><span class="pts">200</span></div>
+        <ul><li>внимание</li><li>интерактив</li><li>энергия</li><li>присутствие</li><li>харизма</li></ul></div>
+    </div>
+    <p class="note">Каждый признак считается из реальных данных кадра и аудио, а не «на глаз». Все пороги собраны в одном конфиге — видно, за что начислен балл.</p>
+  </section>
+
+  <!-- 6 — что получает пользователь -->
+  <section class="slide">
+    <div class="kicker">Результат для учителя</div>
+    <div class="two">
+      <div>
+        <h2>Понятный отчёт,<br>а не сырые цифры</h2>
+        <ul class="bullets">
+          <li>Общий балл, оценка и процент</li>
+          <li>Сильные стороны и приоритетные зоны роста</li>
+          <li>Резюме и план действий на 4 недели</li>
+          <li>Диаграммы по разделам</li>
+          <li>PDF-отчёт и история в личном кабинете</li>
+        </ul>
+      </div>
+      <div>
+        <div class="stat grad">A+<small>оценка по 1000-балльной шкале</small></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7 — архитектура и безопасность -->
+  <section class="slide">
+    <div class="kicker">Архитектура и безопасность</div>
+    <h2>Надёжно и приватно по умолчанию</h2>
+    <div class="grid g2">
+      <div class="card"><h3>Фронтенд</h3><p>React + TypeScript + Vite. Анализ видео идёт в браузере (MediaPipe, ffmpeg.wasm) — запись не выгружается целиком.</p></div>
+      <div class="card"><h3>Бэкенд</h3><p>Serverless-функции на Vercel. Все API-ключи хранятся на сервере, а не в коде браузера.</p></div>
+      <div class="card"><h3>Данные</h3><p>Supabase: вход, база отчётов с построчным доступом (RLS) — каждый видит только своё.</p></div>
+      <div class="card"><h3>Хранилище</h3><p>Приватный бакет для PDF: доступ только к собственной папке пользователя.</p></div>
+    </div>
+  </section>
+
+  <!-- 8 — почему так / ценность -->
+  <section class="slide">
+    <div class="kicker">Почему это работает</div>
+    <h2>Ценность — в <span class="sub">объективности</span></h2>
+    <div class="grid g2">
+      <div class="card"><div class="n">ПОВТОРЯЕМОСТЬ</div><h3>Одинаковое видео — одинаковый балл</h3><p>Оценка не зависит от настроения проверяющего.</p></div>
+      <div class="card"><div class="n">ПРОЗРАЧНОСТЬ</div><h3>Видно, за что балл</h3><p>Все правила и пороги открыты и настраиваются в одном месте.</p></div>
+      <div class="card"><div class="n">ДОСТУПНОСТЬ</div><h3>Эксперт в кармане</h3><p>Качественная обратная связь без наставника рядом.</p></div>
+      <div class="card"><div class="n">МАСШТАБ</div><h3>От учителя до школы</h3><p>Один разбор или единый стандарт для всего коллектива.</p></div>
+    </div>
+  </section>
+
+  <!-- 9 — честно о пределах + roadmap -->
+  <section class="slide">
+    <div class="kicker">Честно о текущем этапе</div>
+    <h2>Не «чёрный ящик»,<br>а понятная система</h2>
+    <ul class="bullets">
+      <li>Сейчас оценка — это продуманные эвристики плюс ИИ-отчёт. <span>Каждое правило можно объяснить и поправить.</span></li>
+      <li>Дальше: калибровка порогов на уроках, размеченных экспертами. <span>Чтобы балл совпадал с мнением методиста.</span></li>
+      <li>Авто-определение языка речи и дашборд для школ. <span>Динамика роста по всему коллективу.</span></li>
+    </ul>
+  </section>
+
+  <!-- 10 — финал -->
+  <section class="slide">
+    <span class="eyebrow"><span class="dot"></span> Enactus Margulan</span>
+    <h2>Растить мастерство учителя —<br><span class="grad">измеримо</span></h2>
+    <p class="lead">MugalimPipe превращает обычную запись урока в объективную картину и понятный план развития.</p>
+    <p class="note">Поддержка и связь: Telegram @q4rzhas</p>
+  </section>
+
+</div>
+
+<div class="counter" id="counter">01 / 10</div>
+<div class="brandfoot">MugalimPipe</div>
+<div class="hint" id="hint">← → или пробел для навигации</div>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const bar = document.getElementById('bar');
+  const counter = document.getElementById('counter');
+  const hint = document.getElementById('hint');
+  let i = 0;
+  const pad = n => String(n).padStart(2,'0');
+  function show(n){
+    i = Math.max(0, Math.min(slides.length-1, n));
+    slides.forEach((s,k)=>s.classList.toggle('active', k===i));
+    bar.style.width = ((i+1)/slides.length*100)+'%';
+    counter.textContent = pad(i+1)+' / '+pad(slides.length);
+  }
+  function next(){ show(i+1) }
+  function prev(){ show(i-1) }
+  document.addEventListener('keydown', e=>{
+    if(['ArrowRight','ArrowDown',' ','PageDown'].includes(e.key)){ e.preventDefault(); next(); }
+    else if(['ArrowLeft','ArrowUp','PageUp'].includes(e.key)){ e.preventDefault(); prev(); }
+    else if(e.key==='Home'){ show(0); } else if(e.key==='End'){ show(slides.length-1); }
+  });
+  document.getElementById('deck').addEventListener('click', e=>{
+    (e.clientX > window.innerWidth*0.35) ? next() : prev();
+  });
+  // свайпы
+  let x0=null;
+  addEventListener('touchstart',e=>x0=e.touches[0].clientX,{passive:true});
+  addEventListener('touchend',e=>{ if(x0===null)return; const dx=e.changedTouches[0].clientX-x0; if(Math.abs(dx)>40)(dx<0?next():prev()); x0=null; });
+  setTimeout(()=>hint.style.opacity=0, 4200);
+  show(0);
+</script>
+</body>
+</html>
