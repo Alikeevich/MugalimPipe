@@ -1,0 +1,285 @@
+@import url('https://fonts.cdnfonts.com/css/sf-pro-display');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   ДИЗАЙН-СИСТЕМА — «Академический премиум»
+   Тёплый чернильный фон · благородный бордо · золотой акцент.
+   ============================================================ */
+:root {
+  /* Фон и поверхности (тёплый, не чистый чёрный) */
+  --bg-primary: #0C0B0D;
+  --surface-1: #151317;
+  --surface-2: #1C191F;
+  --surface-3: #241F27;
+
+  /* Линии/границы — волосяные */
+  --hairline: rgba(255, 255, 255, 0.08);
+  --hairline-strong: rgba(255, 255, 255, 0.14);
+
+  /* Текст — тёплый off-white */
+  --text-primary: #F3EFEA;
+  --text-secondary: rgba(243, 239, 234, 0.62);
+  --text-tertiary: rgba(243, 239, 234, 0.40);
+
+  /* Бренд — бордо */
+  --accent: #9B2D3C;
+  --accent-light: #B84455;
+  --accent-dark: #74212D;
+  --accent-glow: rgba(155, 45, 60, 0.30);
+
+  /* Золотой акцент — для ключевых чисел и выделений */
+  --gold: #D2A24C;
+  --gold-light: #E6C079;
+
+  /* Семантика оценок */
+  --green: #6FA876;   /* хорошо */
+  --orange: #D2A24C;  /* средне (золото) */
+  --purple: #5E3550;  /* доп. оттенок для графиков/градиентов */
+  --blue: #3D5A66;    /* доп. холодный оттенок */
+  --blue-glow: rgba(61, 90, 102, 0.30);
+
+  /* Совместимость со старыми переменными */
+  --glass-bg: var(--surface-2);
+  --glass-bg-light: var(--surface-3);
+  --glass-border: var(--hairline);
+  --glass-border-light: var(--hairline-strong);
+
+  --radius: 16px;
+  --radius-sm: 12px;
+  --radius-lg: 22px;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+body {
+  font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.011em;
+}
+
+/* Точечные переходы вместо тяжёлого `* { transition: all }` */
+a, button, input, textarea, select,
+.liquid-glass, .liquid-button, .nav-icon-btn, .liquid-badge, .liquid-input {
+  transition: background-color 0.22s var(--ease), border-color 0.22s var(--ease),
+              color 0.22s var(--ease), box-shadow 0.22s var(--ease),
+              transform 0.22s var(--ease), opacity 0.22s var(--ease);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  letter-spacing: -0.028em;
+}
+
+/* Mobile */
+@media (max-width: 640px) {
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  body { -webkit-tap-highlight-color: transparent; }
+  input, textarea, select { font-size: 16px !important; }
+}
+
+@supports (padding: max(0px)) {
+  body {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+/* ============================================================
+   ПОВЕРХНОСТИ / КАРТОЧКИ
+   ============================================================ */
+.liquid-glass {
+  background: var(--surface-1);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset,
+              0 12px 30px -18px rgba(0, 0, 0, 0.7);
+  position: relative;
+}
+
+.liquid-glass:hover {
+  border-color: var(--hairline-strong);
+}
+
+.glass-card-sm { background: var(--surface-1); border: 1px solid var(--hairline); border-radius: var(--radius-sm); padding: 16px; }
+.glass-card-md { background: var(--surface-1); border: 1px solid var(--hairline); border-radius: var(--radius); padding: 24px; }
+.glass-card-lg { background: var(--surface-1); border: 1px solid var(--hairline); border-radius: var(--radius-lg); padding: 32px; }
+
+/* ============================================================
+   КНОПКИ
+   ============================================================ */
+.liquid-button,
+.glass-button {
+  background: var(--surface-2);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-weight: 600;
+  padding: 13px 26px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.liquid-button:hover,
+.glass-button:hover {
+  background: var(--surface-3);
+  border-color: rgba(255, 255, 255, 0.22);
+  transform: translateY(-1px);
+}
+
+.liquid-button:active,
+.glass-button:active { transform: translateY(0); }
+
+.liquid-button svg,
+.glass-button svg,
+.nav-icon-btn svg {
+  display: block;
+  width: 20px;
+  height: 20px;
+}
+
+.liquid-button-primary,
+.glass-button-primary {
+  background: var(--accent);
+  border: 1px solid var(--accent-light);
+  color: #fff;
+  box-shadow: 0 10px 26px -12px var(--accent-glow);
+}
+
+.liquid-button-primary:hover,
+.glass-button-primary:hover {
+  background: var(--accent-light);
+  border-color: var(--accent-light);
+}
+
+/* Иконочные кнопки навигации */
+.nav-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: var(--surface-2);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.nav-icon-btn:hover {
+  background: var(--surface-3);
+  border-color: var(--hairline-strong);
+  color: var(--text-primary);
+  transform: translateY(-1px);
+}
+
+.nav-icon-btn-primary {
+  background: var(--accent);
+  border-color: var(--accent-light);
+  color: #fff;
+}
+
+.nav-icon-btn-primary:hover {
+  background: var(--accent-light);
+  color: #fff;
+}
+
+/* ============================================================
+   ВВОД
+   ============================================================ */
+.liquid-input {
+  background: var(--surface-2);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  padding: 14px 18px;
+  font-size: 15px;
+  width: 100%;
+}
+
+.liquid-input::placeholder { color: var(--text-tertiary); }
+
+.liquid-input:focus {
+  outline: none;
+  border-color: var(--accent-light);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+/* ============================================================
+   НАВИГАЦИЯ (лёгкое стекло сверху)
+   ============================================================ */
+.liquid-nav {
+  background: rgba(12, 11, 13, 0.72);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  border-bottom: 1px solid var(--hairline);
+}
+
+/* ============================================================
+   ПЛАШКА / BADGE
+   ============================================================ */
+.liquid-badge {
+  background: var(--surface-2);
+  border: 1px solid var(--hairline);
+  border-radius: 9999px;
+  padding: 7px 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+/* ============================================================
+   АКЦЕНТНЫЙ ТЕКСТ
+   ============================================================ */
+.text-gradient {
+  background: linear-gradient(100deg, var(--gold-light) 0%, var(--gold) 45%, var(--accent-light) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-gradient-blue,
+.text-gradient-green {
+  background: linear-gradient(100deg, var(--gold) 0%, var(--accent-light) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Мягкое золотое свечение под ключевыми элементами (сдержанно) */
+.glow { box-shadow: 0 16px 50px -28px var(--accent-glow); }
+.glow-text { text-shadow: none; }
+
+/* ============================================================
+   АНИМАЦИИ (минимум)
+   ============================================================ */
+@keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+.animate-float { animation: float 4s ease-in-out infinite; }
+
+/* ============================================================
+   SCROLLBAR / SELECTION
+   ============================================================ */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  border: 3px solid var(--bg-primary);
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
+
+::selection { background: var(--accent); color: #fff; }
